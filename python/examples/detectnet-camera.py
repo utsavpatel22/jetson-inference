@@ -27,6 +27,9 @@ import jetson.utils
 import argparse
 import sys
 
+import rospy
+from std_msgs.msg import Bool
+
 # parse the command line
 parser = argparse.ArgumentParser(description="Locate objects in a live camera stream using an object detection DNN.", 
 						   formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.detectNet.Usage())
@@ -37,6 +40,12 @@ parser.add_argument("--threshold", type=float, default=0.5, help="minimum detect
 parser.add_argument("--camera", type=str, default="0", help="index of the MIPI CSI camera to use (e.g. CSI camera 0)\nor for VL42 cameras, the /dev/video device to use.\nby default, MIPI CSI camera 0 will be used.")
 parser.add_argument("--width", type=int, default=1280, help="desired width of camera stream (default is 1280 pixels)")
 parser.add_argument("--height", type=int, default=720, help="desired height of camera stream (default is 720 pixels)")
+
+rospy.init_node("detection_publisher", anonymous=True)
+detection_state_pub = rospy.Publisher("/detection_state_bool", Bool, queue_size = 1)
+detection_bool = Bool()
+detection_bool = False
+ros_rate = rospy.Rate(10)
 
 try:
 	opt = parser.parse_known_args()[0]
@@ -66,11 +75,20 @@ while display.IsOpen():
 	for detection in detections:
 		print(detection)
 
+        n = 0
+
+        if len(detections) > 0:
+                while n<50:
+                      detection_bool = True
+                      detection_state_pub.publish(detection_bool)
+                      ros_rate.sleep()
+                      n += 1
+
 	# render the image
-	display.RenderOnce(img, width, height)
+	#display.RenderOnce(img, width, height)
 
 	# update the title bar
-	display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
+	#display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
 
 	# print out performance info
 	net.PrintProfilerTimes()
