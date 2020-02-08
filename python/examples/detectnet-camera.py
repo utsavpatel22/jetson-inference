@@ -32,11 +32,11 @@ from std_msgs.msg import Int16
 from nav_msgs.msg import Odometry
 
 
-def odometry_callback(data):
+#def odometry_callback(data):
      
-    odom_det.pose.pose.position.x = data.pose.pose.position.x
-    odom_det.pose.pose.position.y = data.pose.pose.position.y
-    odom_det.pose.pose.position.z = data.pose.pose.position.z
+#    odom_det.pose.pose.position.x = data.pose.pose.position.x
+#    odom_det.pose.pose.position.y = data.pose.pose.position.y
+#    odom_det.pose.pose.position.z = data.pose.pose.position.z
     
 
 
