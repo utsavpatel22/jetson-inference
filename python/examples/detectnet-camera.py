@@ -29,6 +29,16 @@ import sys
 
 import rospy
 from std_msgs.msg import Int16
+from nav_msgs.msg import Odometry
+
+
+def odometry_callback(data):
+     
+    odom_det.pose.pose.position.x = data.pose.pose.position.x
+    odom_det.pose.pose.position.y = data.pose.pose.position.y
+    odom_det.pose.pose.position.z = data.pose.pose.position.z
+    
+
 
 # parse the command line
 parser = argparse.ArgumentParser(description="Locate objects in a live camera stream using an object detection DNN.", 
@@ -43,8 +53,12 @@ parser.add_argument("--height", type=int, default=720, help="desired height of c
 
 rospy.init_node("detection_publisher", anonymous=True)
 detection_state_pub = rospy.Publisher("/detection_state_bool", Int16, queue_size = 1)
+detection_location_pub = rospy.Publisher("/detection_location", Odometry, queue_size = 1)
 detection_bool = Int16()
 detection_bool = 0
+global odom_det
+odom_det = Odometry()
+detection_status = False
 ros_rate = rospy.Rate(10)
 
 try:
@@ -59,7 +73,7 @@ net = jetson.inference.detectNet(opt.network, sys.argv, opt.threshold)
 
 # create the camera and display
 camera = jetson.utils.gstCamera(opt.width, opt.height, opt.camera)
-#display = jetson.utils.glDisplay()
+display = jetson.utils.glDisplay()
 
 # process frames until user exits
 while True and not rospy.is_shutdown():
@@ -75,12 +89,15 @@ while True and not rospy.is_shutdown():
 	for detection in detections:
 		print(detection)
 
+        if not detection_status:
+              odom_det = rospy.wait_for_message("/camera/odom/sample", Odometry, timeout=5.0)
         
 
         if len(detections) > 0:
               detection_bool = 1
-              detection_state_pub.publish(detection_bool)
-              #ros_rate.sleep()
+              detection_state_pub.publish(detection_bool)                   
+              detection_location_pub.publish(odom_det)
+              detection_status = True
 
         else:
               detection_bool = 0
@@ -89,10 +106,10 @@ while True and not rospy.is_shutdown():
               
 
 	# render the image
-	#display.RenderOnce(img, width, height)
+	display.RenderOnce(img, width, height)
 
 	# update the title bar
-	#display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
+	display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
 
 	# print out performance info
 	net.PrintProfilerTimes()
