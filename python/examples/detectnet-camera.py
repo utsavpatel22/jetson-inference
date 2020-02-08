@@ -28,7 +28,7 @@ import argparse
 import sys
 
 import rospy
-from std_msgs.msg import Bool
+from std_msgs.msg import Int16
 
 # parse the command line
 parser = argparse.ArgumentParser(description="Locate objects in a live camera stream using an object detection DNN.", 
@@ -42,9 +42,9 @@ parser.add_argument("--width", type=int, default=1280, help="desired width of ca
 parser.add_argument("--height", type=int, default=720, help="desired height of camera stream (default is 720 pixels)")
 
 rospy.init_node("detection_publisher", anonymous=True)
-detection_state_pub = rospy.Publisher("/detection_state_bool", Bool, queue_size = 1)
-detection_bool = Bool()
-detection_bool = False
+detection_state_pub = rospy.Publisher("/detection_state_bool", Int16, queue_size = 1)
+detection_bool = Int16()
+detection_bool = 0
 ros_rate = rospy.Rate(10)
 
 try:
@@ -59,10 +59,10 @@ net = jetson.inference.detectNet(opt.network, sys.argv, opt.threshold)
 
 # create the camera and display
 camera = jetson.utils.gstCamera(opt.width, opt.height, opt.camera)
-display = jetson.utils.glDisplay()
+#display = jetson.utils.glDisplay()
 
 # process frames until user exits
-while display.IsOpen():
+while True and not rospy.is_shutdown():
 	# capture the image
 	img, width, height = camera.CaptureRGBA()
 
@@ -75,14 +75,18 @@ while display.IsOpen():
 	for detection in detections:
 		print(detection)
 
-        n = 0
+        
 
         if len(detections) > 0:
-                while n<50:
-                      detection_bool = True
-                      detection_state_pub.publish(detection_bool)
-                      ros_rate.sleep()
-                      n += 1
+              detection_bool = 1
+              detection_state_pub.publish(detection_bool)
+              #ros_rate.sleep()
+
+        else:
+              detection_bool = 0
+              detection_state_pub.publish(detection_bool)
+
+              
 
 	# render the image
 	#display.RenderOnce(img, width, height)
