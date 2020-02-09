@@ -29,6 +29,7 @@ import sys
 
 import rospy
 from std_msgs.msg import Int16
+from std_msgs.msg import Float32MultiArray
 from nav_msgs.msg import Odometry
 
 
@@ -54,10 +55,13 @@ parser.add_argument("--height", type=int, default=720, help="desired height of c
 rospy.init_node("detection_publisher", anonymous=True)
 detection_state_pub = rospy.Publisher("/detection_state_bool", Int16, queue_size = 1)
 detection_location_pub = rospy.Publisher("/detection_location", Odometry, queue_size = 1)
+bb_location_pub = rospy.Publisher("/bounding_box_location", Float32MultiArray, queue_size = 1)
 detection_bool = Int16()
 detection_bool = 0
 global odom_det
 odom_det = Odometry()
+global bb_location
+bb_location = Float32MultiArray()
 detection_status = False
 ros_rate = rospy.Rate(10)
 
@@ -73,7 +77,7 @@ net = jetson.inference.detectNet(opt.network, sys.argv, opt.threshold)
 
 # create the camera and display
 camera = jetson.utils.gstCamera(opt.width, opt.height, opt.camera)
-display = jetson.utils.glDisplay()
+#display = jetson.utils.glDisplay()
 
 # process frames until user exits
 while True and not rospy.is_shutdown():
@@ -91,25 +95,32 @@ while True and not rospy.is_shutdown():
 
         if not detection_status:
               odom_det = rospy.wait_for_message("/camera/odom/sample", Odometry, timeout=5.0)
-        
+        bb_location.data = []        
 
         if len(detections) > 0:
               detection_bool = 1
               detection_state_pub.publish(detection_bool)                   
               detection_location_pub.publish(odom_det)
               detection_status = True
+              bb_location.data.append(detection.Top)
+              bb_location.data.append(detection.Left)
+              bb_location.data.append(detection.Width)
+              bb_location.data.append(detection.Height)
+              bb_location_pub.publish(bb_location)
+              
+              
 
-        else:
-              detection_bool = 0
-              detection_state_pub.publish(detection_bool)
-
+        #else:
+        #      detection_bool = 0
+        #      detection_state_pub.publish(detection_bool)
+        detection_state_pub.publish(detection_bool)
               
 
 	# render the image
-	display.RenderOnce(img, width, height)
+	#display.RenderOnce(img, width, height)
 
 	# update the title bar
-	display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
+	#display.SetTitle("{:s} | Network {:.0f} FPS".format(opt.network, net.GetNetworkFPS()))
 
 	# print out performance info
 	net.PrintProfilerTimes()
